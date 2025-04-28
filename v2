@@ -2,9 +2,9 @@
 local open_eggs = true  -- Set this to false if you don't want to open eggs
 local target_eggs = {"void-egg"}  -- Only looking for "void-egg"
 local target_lucks = {"5x", "10x", "25x"}  -- Looking for these luck multipliers
-local max_search_distance = 50  -- Max distance to detect eggs (in studs)
+local max_search_distance = 500000  -- Max distance to detect eggs (in studs)
 
--- Function to search for eggs with the desired luck and type
+-- Function to search for eggs with the desired luck and type on islands
 function searchForEgg()
     -- Check if the player’s character exists
     local player = game.Players.LocalPlayer
@@ -14,15 +14,21 @@ function searchForEgg()
         return nil  -- If the player doesn't have a HumanoidRootPart, exit
     end
     
-    -- Loop through the Workspace to find eggs
+    -- Loop through the Workspace to find islands and eggs
     for _, obj in ipairs(game.Workspace:GetDescendants()) do
-        if obj:IsA("Model") and string.find(obj.Name, "Egg") then
-            -- Check if the egg matches the desired type (e.g., "void-egg") and luck multiplier (5x, 10x, or 25x)
-            local eggName = obj.Name
-            for _, luck in ipairs(target_lucks) do
-                if string.find(eggName, luck) and string.find(eggName, "void-egg") then
-                    -- Egg matches the criteria, return the egg object
-                    return obj
+        -- Check if the object is an island (assuming islands are Models with the word "Island" in the name)
+        if obj:IsA("Model") and string.find(obj.Name, "Island") then
+            -- Look for eggs on the island
+            for _, child in ipairs(obj:GetChildren()) do
+                if child:IsA("Model") and string.find(child.Name, "Egg") then
+                    -- Check if the egg matches the desired type (e.g., "void-egg") and luck multiplier (5x, 10x, or 25x)
+                    local eggName = child.Name
+                    for _, luck in ipairs(target_lucks) do
+                        if string.find(eggName, luck) and string.find(eggName, "void-egg") then
+                            -- Egg matches the criteria, return the egg object
+                            return child
+                        end
+                    end
                 end
             end
         end
@@ -51,7 +57,7 @@ function teleportToEgg(egg)
     end
 end
 
--- Server Hop Function
+-- Reverted Server Hop Function (The previous working version)
 function hop()
     print("Waiting 10 seconds before hopping to a new server...")
     wait(10)  -- Delay before hopping to a new server
