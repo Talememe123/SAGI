@@ -30,12 +30,19 @@ function flyToEgg(egg)
     end
 end
 
--- Function to hatch the egg (if open_eggs is true)
 function openEgg(egg)
     if open_eggs then
         print("Opening egg:", egg.Name)
-        -- Implement egg opening logic (e.g., fire a RemoteEvent or interact with the egg)
-        -- Example: fire a remote event to start hatching the egg
+        
+        -- Trigger egg opening action (replace with actual event)
+        local eggOpenEvent = game.ReplicatedStorage:FindFirstChild("EggOpenEvent")
+        
+        if eggOpenEvent then
+            -- Fire the event to open the egg (you might need to send additional parameters)
+            eggOpenEvent:FireServer(egg)
+        else
+            print("EggOpenEvent not found!")
+        end
     else
         print("Egg found but not opening:", egg.Name)
     end
