@@ -1,82 +1,90 @@
--- Fly to Last World and Open Rainbow Egg
-
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Workspace = game:GetService("Workspace")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local PlaceId = game.PlaceId
 
 -- Configuration Variables
-local egg_name = "rainbow-egg"  -- Target egg to find
-local open_eggs = true -- Set to true to hatch eggs, false to just find them
+local target_eggs = {"Void Egg", "Nightmare Egg", "Rainbow Egg", "Aura Egg", "Silly Egg"}  -- List of eggs to search for
+local open_eggs = true -- Set to true to open eggs when found
+local max_distance = 500 -- Maximum distance to search for eggs
 
--- Function to find the last world or island (for the Rainbow Egg)
-function findLastWorld()
-    local lastWorld = nil
-    -- Loop through all parts in the workspace to find the last island or world (example)
+-- Function to find eggs across the game (even if they're far)
+function findEggs()
+    local foundEggs = {}
     for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("Model") and string.find(obj.Name, "Island") then
-            -- In a real case, you would check for the "last" world based on some conditions
-            lastWorld = obj
+        if obj:IsA("Model") then
+            for _, eggName in ipairs(target_eggs) do
+                if string.find(obj.Name, eggName) then
+                    table.insert(foundEggs, obj)
+                end
+            end
         end
     end
-    return lastWorld
+    return foundEggs
 end
 
--- Function to fly to the egg and start opening it
-function flyToEgg(egg)
-    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if root and egg then
-        local eggPosition = egg.CFrame.Position
-        local direction = (eggPosition - root.Position).unit
-        -- Fly to the egg (simple approach)
-        while (root.Position - eggPosition).Magnitude > 5 do
-            root.CFrame = root.CFrame + direction * 10
-            wait(0.1)  -- Minimal delay to simulate flying
-        end
-        -- Once at the egg, open it
-        openEgg(egg)
+-- Function to teleport to the farthest egg
+function teleportToEgg(egg)
+    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        local eggPosition = egg:FindFirstChild("Main") and egg.Main.CFrame.Position or egg.CFrame.Position
+        hrp.CFrame = CFrame.new(eggPosition + Vector3.new(0, 3, 0)) -- Slightly above egg to prevent colliding
+        print("Teleporting to egg:", egg.Name)
     else
-        print("No egg or root part found, cannot fly.")
+        print("HumanoidRootPart not found!")
     end
 end
 
--- Function to hatch the egg (if open_eggs is true)
+-- Function to open the egg (if open_eggs is true)
 function openEgg(egg)
     if open_eggs then
         print("Opening egg:", egg.Name)
-        
-        -- Simulate pressing "E" to open the egg (if "E" is the correct input key)
-        local userInputService = game:GetService("UserInputService")
-        userInputService.InputBegan:Connect(function(input)
-            if input.KeyCode == Enum.KeyCode.E then
-                -- You can also call any other function here that opens the egg based on Delta
-                -- If Delta has a custom way to "open" eggs, you would invoke it here.
-                print("Egg opened!")
-            end
-        end)
+        -- Replace this with actual logic to "open" the egg in Delta, e.g., triggering the "E" key or Delta's method to open
     else
         print("Egg found but not opening:", egg.Name)
     end
 end
 
--- Main loop (find last world, fly to it, open rainbow egg)
+-- Your provided server-hop function
+local checked = {}
+function hop()
+    print("Waiting 60 seconds before hopping to a new server...")
+    wait(60)  -- 60 seconds delay before hopping to a new server
+    
+    local cursor = ""
+    while true do
+        local url = ("https://games.roblox.com/v1/games/%s/servers/Public?limit=100&cursor=%s&sortOrder=Asc"):format(PlaceId, cursor)
+        local data = HttpService:JSONDecode(game:HttpGet(url))
+        for _, s in ipairs(data.data) do
+            if s.playing < s.maxPlayers and s.id ~= game.JobId then
+                TeleportService:TeleportToPlaceInstance(PlaceId, s.id, LocalPlayer)
+                print("Hopped to a new server: " .. s.id)
+                return
+            end
+        end
+        if not data.nextPageCursor then break end
+        cursor = data.nextPageCursor
+    end
+end
+
+-- Main loop (find eggs, teleport, server hop, hatch eggs)
 spawn(function()
     while true do
-        -- Find the last world (island)
-        local lastWorld = findLastWorld()
+        -- Search for eggs across the entire game
+        local foundEggs = findEggs()
         
-        if lastWorld then
-            -- Search for the Rainbow Egg on that world
-            local rainbowEgg = lastWorld:FindFirstChild(egg_name)
-            
-            if rainbowEgg then
-                -- Fly to the Rainbow Egg and open it
-                flyToEgg(rainbowEgg)
-            else
-                print("Rainbow egg not found in the last world!")
-            end
+        if #foundEggs == 0 then
+            print("No eggs found. Hopping to another server...")
+            hop() -- Perform server hop if no eggs found
         else
-            print("No last world found!")
+            -- Prioritize the first egg in the target_eggs list
+            local eggToTeleport = foundEggs[1] -- Default to the first egg found
+            
+            -- Teleport to the egg and open it
+            teleportToEgg(eggToTeleport)
+            openEgg(eggToTeleport)  -- Open the egg if open_eggs is true
         end
         
         -- Delay of 5 seconds before checking again
