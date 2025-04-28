@@ -1,70 +1,23 @@
--- Configuration
-local open_eggs = true  -- Set this to false if you don't want to open eggs
-local target_eggs = {"void-egg"}  -- Only looking for "void-egg"
-local target_lucks = {"5x", "10x", "25x"}  -- Looking for these luck multipliers
-local max_search_distance = 50000  -- Max distance to detect eggs (in studs)
+-- Egg Finder and Hatcher (Delta compatible with automatic egg search and opening)
 
--- Function to search for eggs with the desired luck and type on islands
-function searchForEgg()
-    -- Check if the player’s character exists
-    local player = game.Players.LocalPlayer
-    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    
-    if not hrp then
-        return nil  -- If the player doesn't have a HumanoidRootPart, exit
-    end
-    
-    -- Loop through the Workspace to find islands and eggs
-    for _, obj in ipairs(game.Workspace:GetDescendants()) do
-        -- Check if the object is an island (assuming islands are Models with the word "Island" in the name)
-        if obj:IsA("Model") and string.find(obj.Name, "Island") then
-            -- Look for eggs on the island
-            for _, child in ipairs(obj:GetChildren()) do
-                if child:IsA("Model") and string.find(child.Name, "Egg") then
-                    -- Check if the egg matches the desired type (e.g., "void-egg") and luck multiplier (5x, 10x, or 25x)
-                    local eggName = child.Name
-                    for _, luck in ipairs(target_lucks) do
-                        if string.find(eggName, luck) and string.find(eggName, "void-egg") then
-                            -- Check the distance between the player and the egg
-                            local eggPosition = child:FindFirstChild("Main") or child:FindFirstChildWhichIsA("Part")
-                            if eggPosition then
-                                local distance = (hrp.Position - eggPosition.Position).magnitude
-                                -- If the egg is within max search distance, return it
-                                if distance <= max_search_distance then
-                                    return child
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-    
-    -- If no egg found, return nil
-    return nil
-end
+local Players = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
+local LocalPlayer = Players.LocalPlayer
+local HttpService = game:GetService("HttpService")
+local PlaceId = game.PlaceId
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- Function to teleport or fly the player to the egg
-function teleportToEgg(egg)
-    -- Check if the egg is valid and the player exists
-    local player = game.Players.LocalPlayer
-    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    
-    if not hrp or not egg then
-        return  -- Exit if no valid egg or player
-    end
-    
-    -- Get the position of the egg's main part
-    local mainPart = egg:FindFirstChild("Main") or egg:FindFirstChildWhichIsA("Part")
-    if mainPart then
-        -- Teleport the player to the egg's position (adding some vertical height)
-        hrp.CFrame = mainPart.CFrame + Vector3.new(0, 3, 0)  -- Adding a little height for visibility
-        print("Flying/Teleporting to egg: " .. egg.Name)
-    end
-end
+-- Configuration Variables
+local egg_amount = "max" -- Number of eggs to hatch at once (set to "max" for max eggs)
+local egg_priority = "void-egg" -- Priority egg (e.g., "aura-egg", "event-1", etc.) 
+local open_eggs = true -- Set to true to hatch eggs, false to just find them
+local target_eggs = {"aura-egg", "event-1", "event-2", "rainbow-egg", "nightmare-egg", "void-egg", "event-3"} -- List of target eggs
 
--- Reverted Server Hop Function (The previous working version)
+-- Initialize selected egg
+local selectedEgg = "void-egg"  -- Default to "aura-egg" if no selection made yet 
+
+-- Server hop function
+local checked = {}
 function hop()
     print("Waiting 10 seconds before hopping to a new server...")
     wait(10)  -- Delay before hopping to a new server
@@ -86,19 +39,90 @@ function hop()
     end
 end
 
--- Main loop: Search for eggs and teleport to them or hop if none found
-while true do
-    -- Search for an egg
-    local egg = searchForEgg()
-    
-    -- If an egg is found, teleport to it
-    if egg then
-        teleportToEgg(egg)
+-- Function to fly to the egg and start opening it
+function flyToEgg(egg)
+    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if root and egg then
+        local eggPosition = egg.CFrame.Position
+        local direction = (eggPosition - root.Position).unit
+        -- Fly to the egg (simple approach)
+        while (root.Position - eggPosition).Magnitude > 5 do
+            root.CFrame = root.CFrame + direction * 10
+            wait(0.1)  -- Minimal delay to simulate flying
+        end
+        -- Once at the egg, open it
+        openEgg(egg)
     else
-        -- If no egg found, hop to a new server
-        print("No suitable egg found in this server, hopping to a new one.")
-        hop()
+        print("No egg or root part found, cannot fly.")
+    end
+end
+
+-- Function to hatch the egg (if open_eggs is true)
+function openEgg(egg)
+    if open_eggs then
+        print("Opening egg:", egg.Name)
+        
+        -- Trigger egg opening action (replace with actual event)
+        local eggOpenEvent = ReplicatedStorage:FindFirstChild("EggOpenEvent")
+        
+        if eggOpenEvent then
+            -- Fire the event to open the egg (you might need to send additional parameters)
+            eggOpenEvent:FireServer(egg)
+        else
+            print("EggOpenEvent not found!")
+        end
+    else
+        print("Egg found but not opening:", egg.Name)
+    end
+end
+
+-- Function to search for eggs with the specified luck and type
+function searchForEggs()
+    local foundEggs = {}
+    
+    -- Loop through all objects in workspace
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("Model") and (string.find(obj.Name, "Egg")) then
+            -- Check for egg name matching target eggs and luck values
+            for _, target in ipairs(target_eggs) do
+                if string.find(obj.Name, target) then
+                    table.insert(foundEggs, obj)
+                    break  -- Stop looking once we find a matching egg
+                end
+            end
+        end
     end
     
-    wait(1)  -- Delay between each search cycle (can be adjusted)
+    return foundEggs
 end
+
+-- Main loop (find egg, teleport, server hop, hatch eggs)
+spawn(function()
+    while true do
+        -- Search for eggs on the server
+        local foundEggs = searchForEggs()
+        
+        -- If no eggs are found, hop to another server
+        if #foundEggs == 0 then
+            print("No desired eggs found in the current server. Hopping to another server...")
+            hop() -- Perform server hop
+        else
+            -- Fly to the egg (prioritize eggs in the target_eggs list)
+            local eggToOpen = foundEggs[1] -- Default to the first egg found
+            if egg_priority then
+                -- If egg_priority is set, prioritize that egg
+                for _, egg in ipairs(foundEggs) do
+                    if egg.Name == egg_priority then
+                        eggToOpen = egg
+                        break
+                    end
+                end
+            end
+            -- Fly to the selected egg and open it
+            flyToEgg(eggToOpen)
+        end
+        
+        -- Delay of 5 seconds before checking again to give the server time to stabilize
+        wait(5)
+    end
+end)
