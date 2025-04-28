@@ -1,5 +1,4 @@
--- Egg Finder and Hatcher for Delta (automatic egg search, flying, and opening eggs)
-
+-- Full Script with Server Hop and Luck Egg Search (with 10-second delay before server hop)
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local LocalPlayer = Players.LocalPlayer
@@ -8,9 +7,10 @@ local PlaceId = game.PlaceId
 
 -- Configuration Variables
 local egg_amount = "max" -- Number of eggs to hatch at once (set to "max" for max eggs)
-local egg_priority = "void-egg" -- Priority egg (e.g., "aura-egg", "event-1", etc.)
+local egg_priority = "aura-egg" -- Priority egg (e.g., "aura-egg", "event-1", etc.)
 local open_eggs = true -- Set to true to hatch eggs, false to just find them
-local target_eggs = {"aura-egg", "event-1", "event-2", "rainbow-egg", "nightmare-egg", "void-egg", "event-3"}
+local target_eggs = {"Void Egg", "Nightmare Egg", "Rainbow Egg", "Aura Egg", "Silly Egg"}  -- List of eggs to search
+local luckTags = {"5x", "10x", "25x"}  -- Luck tags for eggs (5x, 10x, 25x)
 
 -- Initialize selected egg
 local selectedEgg = "void-egg"  -- Default to "aura-egg" if no selection made yet
@@ -52,9 +52,12 @@ function openEgg(egg)
     end
 end
 
--- Server hop function
+-- Server hop function with 10 seconds delay before hopping
 local checked = {}
 function hop()
+    print("Waiting 10 seconds before hopping to a new server...")
+    wait(10)  -- Delay before hopping to a new server
+    
     local cursor = ""
     while true do
         local url = ("https://games.roblox.com/v1/games/%s/servers/Public?limit=100&cursor=%s&sortOrder=Asc"):format(PlaceId, cursor)
@@ -72,28 +75,46 @@ function hop()
     end
 end
 
+-- Function to search for eggs with luck (5x, 10x, 25x)
+function searchForLuckEggs()
+    local foundEggs = {}
+    
+    -- Iterate through all eggs in the workspace
+    for _, obj in ipairs(game.Workspace:GetDescendants()) do
+        if obj:IsA("Model") and table.find(target_eggs, obj.Name) then
+            -- Check if the egg has a luck tag (5x, 10x, or 25x)
+            local luckFound = false
+            for _, luckTag in ipairs(luckTags) do
+                if string.find(obj.Name, luckTag) then
+                    luckFound = true
+                    break
+                end
+            end
+
+            -- If the egg has luck, add it to the foundEggs list
+            if luckFound then
+                table.insert(foundEggs, obj)
+                print("Luck Egg found: " .. obj.Name)  -- Log the egg found
+            end
+        end
+    end
+    
+    return foundEggs
+end
+
 -- Main loop (find egg, teleport, server hop, hatch eggs)
 spawn(function()
     while true do
-        -- Search for eggs on the islands (target_eggs list)
-        local foundEggs = {}
-        for _, eggName in ipairs(target_eggs) do
-            -- Searching for eggs with the name in the target_eggs list
-            for _, egg in ipairs(workspace:GetChildren()) do
-                if egg:IsA("Part") and egg.Name == eggName then
-                    print("Egg found: " .. egg.Name)  -- Log egg found
-                    table.insert(foundEggs, egg)
-                end
-            end
-        end
-
+        -- Search for luck eggs on the islands
+        local foundEggs = searchForLuckEggs()
+        
         -- If no eggs are found, hop to another server
         if #foundEggs == 0 then
-            print("No desired eggs found in the current server. Hopping to another server...")  -- Log server hop
+            print("No luck eggs found in the current server. Hopping to another server...")  -- Log server hop
             hop() -- Perform server hop
         else
-            -- Fly to the egg (prioritize eggs in the target_eggs list)
-            local eggToOpen = foundEggs[1] -- Default to the first egg found
+            -- Fly to the first found egg with luck
+            local eggToOpen = foundEggs[1]  -- Default to the first egg found
             if egg_priority then
                 -- If egg_priority is set, prioritize that egg
                 for _, egg in ipairs(foundEggs) do
