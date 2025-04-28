@@ -1,0 +1,84 @@
+-- ✅ Requires HTTP enabled executor (Synapse X, Script-Ware)
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local PlaceId = game.PlaceId
+
+local targetEggs = {"void-egg", "aura-egg", "rainbow-egg"}
+local checkedServers = {}
+local currentJobId = game.JobId
+
+-- 🔍 Find one of the eggs
+local function findEgg()
+    for _, eggName in ipairs(targetEggs) do
+        local egg = workspace:FindFirstChild(eggName)
+        if egg then
+            return egg
+        end
+    end
+    return nil
+end
+
+-- 🚀 Teleport to egg
+local function teleportToEgg(egg)
+    local root = LocalPlayer.Character:WaitForChild("HumanoidRootPart")
+    root.CFrame = egg.CFrame + Vector3.new(0, 5, 0)
+end
+
+-- 🥚 Simulate egg open (this part depends on the UI or remote events; adjust if needed)
+local function openEgg()
+    -- If there is a RemoteEvent for opening, you'd fire it here.
+    print("Opening egg...")
+    wait(1.5)
+end
+
+-- 🌐 Get public servers
+local function getServerList()
+    local cursor = ""
+    local servers = {}
+    local success, result
+
+    repeat
+        success, result = pcall(function()
+            local url = ("https://games.roblox.com/v1/games/%s/servers/Public?sortOrder=Asc&limit=100&cursor=%s"):format(PlaceId, cursor)
+            local response = HttpService:JSONDecode(game:HttpGet(url))
+            cursor = response.nextPageCursor or ""
+            for _, server in ipairs(response.data) do
+                if server.playing < server.maxPlayers and server.id ~= currentJobId then
+                    table.insert(servers, server.id)
+                end
+            end
+            return servers
+        end)
+        wait(0.5)
+    until not cursor or not success
+
+    return servers
+end
+
+-- 🔁 Server-hop logic
+local function serverHop()
+    local servers = getServerList()
+    for _, serverId in ipairs(servers) do
+        if not checkedServers[serverId] then
+            checkedServers[serverId] = true
+            print("Hopping to server:", serverId)
+            TeleportService:TeleportToPlaceInstance(PlaceId, serverId, LocalPlayer)
+            wait(5)
+            return
+        end
+    end
+end
+
+-- 🔄 Main loop
+while true do
+    local egg = findEgg()
+    if egg then
+        teleportToEgg(egg)
+        openEgg()
+    else
+        serverHop()
+    end
+    wait(2)
+end
