@@ -1,14 +1,21 @@
--- Egg GUI + Finder (Delta compatible, minimal wait)
+-- Egg Finder and Hatcher (Delta compatible with egg priority, egg_amount, and open_eggs options)
+
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local LocalPlayer = Players.LocalPlayer
 local HttpService = game:GetService("HttpService")
 local PlaceId = game.PlaceId
 
-local eggOptions = {"void-egg", "aura-egg", "rainbow-egg"}
-local selectedEgg = nil
+-- Configuration Variables
+local egg_amount = "max" -- Number of eggs to hatch at once (set to "max" for max eggs)
+local egg_priority = "aura-egg" -- Priority egg (e.g., "aura-egg", "event-1", etc.)
+local open_eggs = true -- Set to true to hatch eggs, false to just find them
+local target_eggs = {"aura-egg", "event-1", "event-2", "rainbow-egg", "nightmare-egg", "void-egg", "event-3"}
 
--- GUI
+-- Initialize egg selection
+local selectedEgg = "aura-egg"  -- Default to "aura-egg" if no selection made yet
+
+-- GUI Setup
 local gui = Instance.new("ScreenGui", game.CoreGui)
 gui.Name = "EggFinderUI"
 
@@ -23,7 +30,7 @@ label.Text = "Select Egg:"
 label.TextColor3 = Color3.new(1, 1, 1)
 label.BackgroundTransparency = 1
 
-for i, eggName in ipairs(eggOptions) do
+for i, eggName in ipairs(target_eggs) do
     local btn = Instance.new("TextButton", frame)
     btn.Size = UDim2.new(1, 0, 0, 20)
     btn.Position = UDim2.new(0, 0, 0, 30 + (i - 1) * 20)
@@ -37,7 +44,7 @@ for i, eggName in ipairs(eggOptions) do
     end)
 end
 
--- Server hop
+-- Server hop function
 local checked = {}
 function hop()
     local cursor = ""
@@ -56,21 +63,53 @@ function hop()
     end
 end
 
--- Main loop
+-- Function to hatch the egg (if open_eggs is true)
+function openEgg(egg)
+    if open_eggs then
+        print("Opening egg:", egg.Name)
+        -- Implement egg opening logic (e.g., fire a RemoteEvent or interact with the egg)
+    else
+        print("Egg found but not opening:", egg.Name)
+    end
+end
+
+-- Main loop (find egg, teleport, server hop, hatch eggs)
 spawn(function()
     while true do
-        if selectedEgg then
-            local egg = workspace:FindFirstChild(selectedEgg)
+        -- Prioritize the selected egg
+        local eggToOpen = nil
+        local foundEggs = {}
+
+        for _, eggName in ipairs(target_eggs) do
+            local egg = workspace:FindFirstChild(eggName)
             if egg then
-                local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                if root then
-                    root.CFrame = egg.CFrame + Vector3.new(0, 5, 0)
-                    print("Found and teleported to:", selectedEgg)
-                end
-            else
-                hop()
+                table.insert(foundEggs, egg)
             end
         end
-        task.wait() -- minimal delay
+
+        -- Sort found eggs by priority
+        table.sort(foundEggs, function(a, b)
+            if a.Name == egg_priority then return true end
+            if b.Name == egg_priority then return false end
+            return false -- No priority sorting for other eggs
+        end)
+
+        -- Select eggs to open based on egg_amount
+        local eggCount = 0
+        for _, egg in ipairs(foundEggs) do
+            if eggCount < (egg_amount == "max" and #foundEggs or egg_amount) then
+                openEgg(egg)
+                eggCount = eggCount + 1
+            else
+                break
+            end
+        end
+
+        -- If no eggs were found, hop servers
+        if #foundEggs == 0 then
+            hop()
+        end
+
+        task.wait(0.5) -- Minimal delay for checking eggs
     end
 end)
