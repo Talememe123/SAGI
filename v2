@@ -55,26 +55,25 @@ function openEgg(egg)
     -- Replace this with actual logic to "open" the egg in Delta, e.g., triggering the "E" key or Delta's method to open
 end
 
--- Egg Hunt (search for the eggs in the entire game)
 function startEggHunt()
     eggHunt = true
     while eggHunt do
-        -- Search for eggs across the entire game world
-        local foundEggs = findEggs()
-        
-        if #foundEggs == 0 then
-            print("No eggs found.")
-        else
-            -- Prioritize the closest egg in the target_eggs list
-            local closestEgg = foundEggs[1].egg -- Closest egg based on the sorted distance
-            teleportToEgg(closestEgg) -- Teleport to the egg
-            openEgg(closestEgg)  -- Open the egg if open_eggs is true
+        for _, obj in ipairs(game.Workspace:GetDescendants()) do
+            if obj:IsA("Model") and (string.find(obj.Name, "Void Egg") or string.find(obj.Name, "Nightmare Egg") or string.find(obj.Name, "Rainbow Egg") or string.find(obj.Name, "Aura Egg") or string.find(obj.Name, "Silly Egg")) then
+                local mainPart = obj:FindFirstChild("Main") or obj:FindFirstChildWhichIsA("Part")
+                if mainPart then
+                    local hrp = game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        hrp.CFrame = mainPart.CFrame + Vector3.new(0, 3, 0)
+                        wait(0.1)
+                    end
+                end
+            end
         end
-        
-        -- Delay before checking again
-        wait(5)
+        wait(0.5)
     end
 end
+
 
 -- GUI Creation
 local screenGui = Instance.new("ScreenGui")
