@@ -1,84 +1,76 @@
--- ✅ Requires HTTP enabled executor (Synapse X, Script-Ware)
-local HttpService = game:GetService("HttpService")
-local TeleportService = game:GetService("TeleportService")
+-- Egg GUI + Finder (Delta compatible, minimal wait)
 local Players = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
 local LocalPlayer = Players.LocalPlayer
+local HttpService = game:GetService("HttpService")
 local PlaceId = game.PlaceId
 
-local targetEggs = {"void-egg", "aura-egg", "rainbow-egg"}
-local checkedServers = {}
-local currentJobId = game.JobId
+local eggOptions = {"void-egg", "aura-egg", "rainbow-egg"}
+local selectedEgg = nil
 
--- 🔍 Find one of the eggs
-local function findEgg()
-    for _, eggName in ipairs(targetEggs) do
-        local egg = workspace:FindFirstChild(eggName)
-        if egg then
-            return egg
-        end
-    end
-    return nil
+-- GUI
+local gui = Instance.new("ScreenGui", game.CoreGui)
+gui.Name = "EggFinderUI"
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 200, 0, 100)
+frame.Position = UDim2.new(0, 10, 0, 100)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+
+local label = Instance.new("TextLabel", frame)
+label.Size = UDim2.new(1, 0, 0, 30)
+label.Text = "Select Egg:"
+label.TextColor3 = Color3.new(1, 1, 1)
+label.BackgroundTransparency = 1
+
+for i, eggName in ipairs(eggOptions) do
+    local btn = Instance.new("TextButton", frame)
+    btn.Size = UDim2.new(1, 0, 0, 20)
+    btn.Position = UDim2.new(0, 0, 0, 30 + (i - 1) * 20)
+    btn.Text = eggName
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+
+    btn.MouseButton1Click:Connect(function()
+        selectedEgg = eggName
+        label.Text = "Selected: " .. eggName
+    end)
 end
 
--- 🚀 Teleport to egg
-local function teleportToEgg(egg)
-    local root = LocalPlayer.Character:WaitForChild("HumanoidRootPart")
-    root.CFrame = egg.CFrame + Vector3.new(0, 5, 0)
-end
-
--- 🥚 Simulate egg open (this part depends on the UI or remote events; adjust if needed)
-local function openEgg()
-    -- If there is a RemoteEvent for opening, you'd fire it here.
-    print("Opening egg...")
-    wait(1.5)
-end
-
--- 🌐 Get public servers
-local function getServerList()
+-- Server hop
+local checked = {}
+function hop()
     local cursor = ""
-    local servers = {}
-    local success, result
-
-    repeat
-        success, result = pcall(function()
-            local url = ("https://games.roblox.com/v1/games/%s/servers/Public?sortOrder=Asc&limit=100&cursor=%s"):format(PlaceId, cursor)
-            local response = HttpService:JSONDecode(game:HttpGet(url))
-            cursor = response.nextPageCursor or ""
-            for _, server in ipairs(response.data) do
-                if server.playing < server.maxPlayers and server.id ~= currentJobId then
-                    table.insert(servers, server.id)
-                end
+    while true do
+        local url = ("https://games.roblox.com/v1/games/%s/servers/Public?limit=100&cursor=%s&sortOrder=Asc"):format(PlaceId, cursor)
+        local data = HttpService:JSONDecode(game:HttpGet(url))
+        for _, s in ipairs(data.data) do
+            if not checked[s.id] and s.playing < s.maxPlayers and s.id ~= game.JobId then
+                checked[s.id] = true
+                TeleportService:TeleportToPlaceInstance(PlaceId, s.id, LocalPlayer)
+                return
             end
-            return servers
-        end)
-        wait(0.5)
-    until not cursor or not success
-
-    return servers
-end
-
--- 🔁 Server-hop logic
-local function serverHop()
-    local servers = getServerList()
-    for _, serverId in ipairs(servers) do
-        if not checkedServers[serverId] then
-            checkedServers[serverId] = true
-            print("Hopping to server:", serverId)
-            TeleportService:TeleportToPlaceInstance(PlaceId, serverId, LocalPlayer)
-            wait(5)
-            return
         end
+        if not data.nextPageCursor then break end
+        cursor = data.nextPageCursor
     end
 end
 
--- 🔄 Main loop
-while true do
-    local egg = findEgg()
-    if egg then
-        teleportToEgg(egg)
-        openEgg()
-    else
-        serverHop()
+-- Main loop
+spawn(function()
+    while true do
+        if selectedEgg then
+            local egg = workspace:FindFirstChild(selectedEgg)
+            if egg then
+                local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if root then
+                    root.CFrame = egg.CFrame + Vector3.new(0, 5, 0)
+                    print("Found and teleported to:", selectedEgg)
+                end
+            else
+                hop()
+            end
+        end
+        task.wait() -- minimal delay
     end
-    wait(2)
-end
+end)
