@@ -1,4 +1,4 @@
--- Full Script with Server Hop and Luck Egg Search (with 10-second delay before server hop)
+-- Full Script with Server Hop and Egg Search (searches only for Void Egg)
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local LocalPlayer = Players.LocalPlayer
@@ -7,13 +7,9 @@ local PlaceId = game.PlaceId
 
 -- Configuration Variables
 local egg_amount = "max" -- Number of eggs to hatch at once (set to "max" for max eggs)
-local egg_priority = "aura-egg" -- Priority egg (e.g., "aura-egg", "event-1", etc.)
 local open_eggs = true -- Set to true to hatch eggs, false to just find them
-local target_eggs = {"Void Egg", "Nightmare Egg", "Rainbow Egg", "Aura Egg", "Silly Egg"}  -- List of eggs to search
+local target_egg = "Void Egg"  -- We're focusing on finding the Void Egg
 local luckTags = {"5x", "10x", "25x"}  -- Luck tags for eggs (5x, 10x, 25x)
-
--- Initialize selected egg
-local selectedEgg = "void-egg"  -- Default to "aura-egg" if no selection made yet
 
 -- Function to fly to the egg and start opening it
 function flyToEgg(egg)
@@ -75,58 +71,49 @@ function hop()
     end
 end
 
--- Function to search for eggs with luck (5x, 10x, 25x)
-function searchForLuckEggs()
-    local foundEggs = {}
+-- Function to search for the Void Egg with luck (5x, 10x, 25x)
+function searchForVoidEgg()
+    local foundEgg = nil
     
     -- Iterate through all eggs in the workspace
     for _, obj in ipairs(game.Workspace:GetDescendants()) do
-        if obj:IsA("Model") and table.find(target_eggs, obj.Name) then
+        if obj:IsA("Model") and obj.Name == target_egg then
             -- Check if the egg has a luck tag (5x, 10x, or 25x)
-            local luckFound = false
             for _, luckTag in ipairs(luckTags) do
                 if string.find(obj.Name, luckTag) then
-                    luckFound = true
+                    foundEgg = obj
+                    print("Found a luck egg: " .. obj.Name)  -- Log the egg found
                     break
                 end
             end
-
-            -- If the egg has luck, add it to the foundEggs list
-            if luckFound then
-                table.insert(foundEggs, obj)
-                print("Luck Egg found: " .. obj.Name)  -- Log the egg found
-            end
         end
+        if foundEgg then break end  -- Stop searching once the egg is found
     end
     
-    return foundEggs
+    return foundEgg
 end
 
 -- Main loop (find egg, teleport, server hop, hatch eggs)
 spawn(function()
     while true do
-        -- Search for luck eggs on the islands
-        local foundEggs = searchForLuckEggs()
+        -- Search for the Void egg on the islands
+        local foundEgg = searchForVoidEgg()
         
-        -- If no eggs are found, hop to another server
-        if #foundEggs == 0 then
-            print("No luck eggs found in the current server. Hopping to another server...")  -- Log server hop
+        -- If no Void egg is found, hop to another server
+        if not foundEgg then
+            print("No Void Egg found in the current server. Hopping to another server...")  -- Log server hop
             hop() -- Perform server hop
         else
-            -- Fly to the first found egg with luck
-            local eggToOpen = foundEggs[1]  -- Default to the first egg found
-            if egg_priority then
-                -- If egg_priority is set, prioritize that egg
-                for _, egg in ipairs(foundEggs) do
-                    if egg.Name == egg_priority then
-                        eggToOpen = egg
-                        break
-                    end
-                end
-            end
-            -- Fly to the selected egg and open it
-            flyToEgg(eggToOpen)
+            -- Fly to the found Void Egg and open it
+            flyToEgg(foundEgg)
+            
+            -- Keep checking until the egg disappears (if egg is still in the game)
+            repeat
+                wait(1)  -- Check every 1 second
+                foundEgg = searchForVoidEgg()
+            until not foundEgg  -- Exit when egg is no longer found
         end
-        wait(5)  -- Adding a small delay before re-checking (you can adjust this as needed)
+        
+        wait(5)  -- Adding a small delay before re-checking
     end
 end)
