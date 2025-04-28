@@ -2,7 +2,7 @@
 local open_eggs = true  -- Set this to false if you don't want to open eggs
 local target_eggs = {"void-egg"}  -- Only looking for "void-egg"
 local target_lucks = {"5x", "10x", "25x"}  -- Looking for these luck multipliers
-local max_search_distance = 500000  -- Max distance to detect eggs (in studs)
+local max_search_distance = 50000  -- Max distance to detect eggs (in studs)
 
 -- Function to search for eggs with the desired luck and type on islands
 function searchForEgg()
@@ -25,8 +25,15 @@ function searchForEgg()
                     local eggName = child.Name
                     for _, luck in ipairs(target_lucks) do
                         if string.find(eggName, luck) and string.find(eggName, "void-egg") then
-                            -- Egg matches the criteria, return the egg object
-                            return child
+                            -- Check the distance between the player and the egg
+                            local eggPosition = child:FindFirstChild("Main") or child:FindFirstChildWhichIsA("Part")
+                            if eggPosition then
+                                local distance = (hrp.Position - eggPosition.Position).magnitude
+                                -- If the egg is within max search distance, return it
+                                if distance <= max_search_distance then
+                                    return child
+                                end
+                            end
                         end
                     end
                 end
