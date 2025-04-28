@@ -18,16 +18,18 @@ local selectedEgg = "aura-egg"  -- Default to "aura-egg" if no selection made ye
 -- Fly to the egg and start opening it
 function flyToEgg(egg)
     local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if root then
-        -- Fly to the egg
+    if root and egg then
         local eggPosition = egg.CFrame.Position
         local direction = (eggPosition - root.Position).unit
+        -- Fly to the egg (simple approach)
         while (root.Position - eggPosition).Magnitude > 5 do
             root.CFrame = root.CFrame + direction * 10
             wait(0.1)  -- Minimal delay to simulate flying
         end
         -- Once at the egg, open it
         openEgg(egg)
+    else
+        print("No egg or root part found, cannot fly.")
     end
 end
 
@@ -95,11 +97,13 @@ spawn(function()
                         eggToOpen = egg
                         break
                     end
+                end
             end
             -- Fly to the selected egg and open it
             flyToEgg(eggToOpen)
         end
         
-        wait(5) -- Delay of 5 seconds between searches to allow eggs to appear or the server to stabilize
+        -- Delay of 5 seconds before checking again to give the server time to stabilize
+        wait(5)
     end
 end)
