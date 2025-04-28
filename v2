@@ -10,6 +10,7 @@ local target_eggs = {"Void Egg", "Nightmare Egg", "Rainbow Egg", "Aura Egg", "Si
 local max_distance = 16000 -- Maximum distance to search for eggs (increased to 16000 meters)
 
 local eggHunt = false
+local eggFound = false
 
 -- Function to find eggs across the game (even if they're far) and only select desired ones
 function findEggs()
@@ -44,36 +45,42 @@ function teleportToEgg(egg)
         local eggPosition = egg:FindFirstChild("Main") and egg.Main.CFrame.Position or egg.CFrame.Position
         hrp.CFrame = CFrame.new(eggPosition + Vector3.new(0, 3, 0)) -- Slightly above egg to prevent colliding
         print("Teleporting to egg:", egg.Name)
+        eggFound = true -- Mark that the egg was found and teleportation is done
     else
         print("HumanoidRootPart not found!")
     end
 end
 
--- Function to open the egg (if open_eggs is true)
+-- Function to open the egg (replace this with actual egg-opening logic in the game)
 function openEgg(egg)
     print("Opening egg:", egg.Name)
-    -- Replace this with actual logic to "open" the egg in Delta, e.g., triggering the "E" key or Delta's method to open
+    -- Insert the actual logic to open the egg here, for example:
+    -- game.ReplicatedStorage:WaitForChild("OpenEgg"):FireServer(egg) -- Assuming there's a remote event to open the egg
 end
 
+-- Function to start the egg hunt
 function startEggHunt()
     eggHunt = true
     while eggHunt do
-        for _, obj in ipairs(game.Workspace:GetDescendants()) do
-            if obj:IsA("Model") and (string.find(obj.Name, "Void Egg") or string.find(obj.Name, "Nightmare Egg") or string.find(obj.Name, "Rainbow Egg") or string.find(obj.Name, "Aura Egg") or string.find(obj.Name, "Silly Egg")) then
-                local mainPart = obj:FindFirstChild("Main") or obj:FindFirstChildWhichIsA("Part")
-                if mainPart then
-                    local hrp = game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                    if hrp then
-                        hrp.CFrame = mainPart.CFrame + Vector3.new(0, 3, 0)
-                        wait(0.1)
-                    end
+        local foundEggs = findEggs()  -- Find all eggs in range
+        if #foundEggs > 0 then
+            local closestEgg = foundEggs[1].egg
+            teleportToEgg(closestEgg)  -- Teleport to the closest egg
+            
+            -- Wait until the player is close enough to the egg before trying to open it
+            local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local eggPosition = closestEgg:FindFirstChild("Main") and closestEgg.Main.CFrame.Position or closestEgg.CFrame.Position
+                local distance = (eggPosition - hrp.Position).Magnitude
+                if distance <= 5 then  -- Close enough to open the egg
+                    openEgg(closestEgg)  -- Open the egg
+                    eggHunt = false  -- Stop the hunt after opening the egg
                 end
             end
         end
         wait(0.5)
     end
 end
-
 
 -- GUI Creation
 local screenGui = Instance.new("ScreenGui")
