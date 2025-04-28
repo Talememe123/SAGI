@@ -1,55 +1,57 @@
--- Full Script with Server Hop and Egg Search (searches only for Void Egg)
-local Players = game:GetService("Players")
-local TeleportService = game:GetService("TeleportService")
-local LocalPlayer = Players.LocalPlayer
-local HttpService = game:GetService("HttpService")
-local PlaceId = game.PlaceId
+-- Configuration
+local open_eggs = true  -- Set this to false if you don't want to open eggs
+local target_eggs = {"void-egg"}  -- Only looking for "void-egg"
+local target_lucks = {"5x", "10x", "25x"}  -- Looking for these luck multipliers
+local max_search_distance = 50  -- Max distance to detect eggs (in studs)
 
--- Configuration Variables
-local egg_amount = "max" -- Number of eggs to hatch at once (set to "max" for max eggs)
-local open_eggs = true -- Set to true to hatch eggs, false to just find them
-local target_egg = "Void Egg"  -- We're focusing on finding the Void Egg
-local luckTags = {"5x", "10x", "25x"}  -- Luck tags for eggs (5x, 10x, 25x)
-
--- Function to fly to the egg and start opening it
-function flyToEgg(egg)
-    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if root and egg then
-        local eggPosition = egg.CFrame.Position
-        local direction = (eggPosition - root.Position).unit
-        -- Fly to the egg (simple approach)
-        while (root.Position - eggPosition).Magnitude > 5 do
-            root.CFrame = root.CFrame + direction * 10
-            wait(0.1)  -- Minimal delay to simulate flying
+-- Function to search for eggs with the desired luck and type
+function searchForEgg()
+    -- Check if the player’s character exists
+    local player = game.Players.LocalPlayer
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    
+    if not hrp then
+        return nil  -- If the player doesn't have a HumanoidRootPart, exit
+    end
+    
+    -- Loop through the Workspace to find eggs
+    for _, obj in ipairs(game.Workspace:GetDescendants()) do
+        if obj:IsA("Model") and string.find(obj.Name, "Egg") then
+            -- Check if the egg matches the desired type (e.g., "void-egg") and luck multiplier (5x, 10x, or 25x)
+            local eggName = obj.Name
+            for _, luck in ipairs(target_lucks) do
+                if string.find(eggName, luck) and string.find(eggName, "void-egg") then
+                    -- Egg matches the criteria, return the egg object
+                    return obj
+                end
+            end
         end
-        -- Once at the egg, open it
-        openEgg(egg)
-    else
-        warn("No egg or root part found, cannot fly.")  -- Using warn() for better visibility
+    end
+    
+    -- If no egg found, return nil
+    return nil
+end
+
+-- Function to teleport or fly the player to the egg
+function teleportToEgg(egg)
+    -- Check if the egg is valid and the player exists
+    local player = game.Players.LocalPlayer
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    
+    if not hrp or not egg then
+        return  -- Exit if no valid egg or player
+    end
+    
+    -- Get the position of the egg's main part
+    local mainPart = egg:FindFirstChild("Main") or egg:FindFirstChildWhichIsA("Part")
+    if mainPart then
+        -- Teleport the player to the egg's position (adding some vertical height)
+        hrp.CFrame = mainPart.CFrame + Vector3.new(0, 3, 0)  -- Adding a little height for visibility
+        print("Flying/Teleporting to egg: " .. egg.Name)
     end
 end
 
--- Function to hatch the egg (if open_eggs is true)
-function openEgg(egg)
-    if open_eggs then
-        print("Opening egg: " .. egg.Name)  -- Use print to log egg opening
-        
-        -- Trigger egg opening action (replace with actual event)
-        local eggOpenEvent = game.ReplicatedStorage:FindFirstChild("EggOpenEvent")
-        
-        if eggOpenEvent then
-            -- Fire the event to open the egg (you might need to send additional parameters)
-            eggOpenEvent:FireServer(egg)
-        else
-            warn("EggOpenEvent not found!")  -- Using warn() for better visibility
-        end
-    else
-        print("Egg found but not opening: " .. egg.Name)  -- Informing that egg is found but not opened
-    end
-end
-
--- Server hop function with 10 seconds delay before hopping
-local checked = {}
+-- Server Hop Function
 function hop()
     print("Waiting 10 seconds before hopping to a new server...")
     wait(10)  -- Delay before hopping to a new server
@@ -71,49 +73,19 @@ function hop()
     end
 end
 
--- Function to search for the Void Egg with luck (5x, 10x, 25x)
-function searchForVoidEgg()
-    local foundEgg = nil
+-- Main loop: Search for eggs and teleport to them or hop if none found
+while true do
+    -- Search for an egg
+    local egg = searchForEgg()
     
-    -- Iterate through all eggs in the workspace
-    for _, obj in ipairs(game.Workspace:GetDescendants()) do
-        if obj:IsA("Model") and obj.Name == target_egg then
-            -- Check if the egg has a luck tag (5x, 10x, or 25x)
-            for _, luckTag in ipairs(luckTags) do
-                if string.find(obj.Name, luckTag) then
-                    foundEgg = obj
-                    print("Found a luck egg: " .. obj.Name)  -- Log the egg found
-                    break
-                end
-            end
-        end
-        if foundEgg then break end  -- Stop searching once the egg is found
+    -- If an egg is found, teleport to it
+    if egg then
+        teleportToEgg(egg)
+    else
+        -- If no egg found, hop to a new server
+        print("No suitable egg found in this server, hopping to a new one.")
+        hop()
     end
     
-    return foundEgg
+    wait(1)  -- Delay between each search cycle (can be adjusted)
 end
-
--- Main loop (find egg, teleport, server hop, hatch eggs)
-spawn(function()
-    while true do
-        -- Search for the Void egg on the islands
-        local foundEgg = searchForVoidEgg()
-        
-        -- If no Void egg is found, hop to another server
-        if not foundEgg then
-            print("No Void Egg found in the current server. Hopping to another server...")  -- Log server hop
-            hop() -- Perform server hop
-        else
-            -- Fly to the found Void Egg and open it
-            flyToEgg(foundEgg)
-            
-            -- Keep checking until the egg disappears (if egg is still in the game)
-            repeat
-                wait(1)  -- Check every 1 second
-                foundEgg = searchForVoidEgg()
-            until not foundEgg  -- Exit when egg is no longer found
-        end
-        
-        wait(5)  -- Adding a small delay before re-checking
-    end
-end)
