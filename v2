@@ -1,4 +1,5 @@
 -- Egg Finder and Hatcher (Delta compatible with automatic egg search and opening)
+
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local LocalPlayer = Players.LocalPlayer
@@ -30,6 +31,7 @@ function flyToEgg(egg)
     end
 end
 
+-- Function to hatch the egg (if open_eggs is true)
 function openEgg(egg)
     if open_eggs then
         print("Opening egg:", egg.Name)
@@ -81,6 +83,7 @@ spawn(function()
 
         -- If no eggs are found, hop to another server
         if #foundEggs == 0 then
+            print("No desired eggs found in the current server. Hopping to another server...")
             hop()
         else
             -- Fly to the egg (prioritize eggs in the target_eggs list)
@@ -97,6 +100,6 @@ spawn(function()
             -- Fly to the selected egg and open it
             flyToEgg(eggToOpen)
         end
-        wait(0.5) -- Minimal delay for egg search
+        wait(2) -- Wait for 2 seconds before checking again
     end
 end)
