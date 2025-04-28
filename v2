@@ -10,8 +10,7 @@ local target_eggs = {"Void Egg", "Nightmare Egg", "Rainbow Egg", "Aura Egg", "Si
 local max_distance = 16000 -- Maximum distance to search for eggs (increased to 16000 meters)
 
 local eggHunt = false
-local eggFound = false
-local teleported = false  -- Flag to check if teleportation happened
+local teleported = false  -- Flag to track teleportation state
 
 -- Function to find eggs across the game (even if they're far) and only select desired ones
 function findEggs()
