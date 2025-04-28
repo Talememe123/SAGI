@@ -13,7 +13,7 @@ local open_eggs = true -- Set to true to hatch eggs, false to just find them
 local target_eggs = {"aura-egg", "event-1", "event-2", "rainbow-egg", "nightmare-egg", "void-egg", "event-3"}
 
 -- Initialize selected egg
-local selectedEgg = "aura-egg"  -- Default to "aura-egg" if no selection made yet
+local selectedEgg = "void-egg"  -- Default to "aura-egg" if no selection made yet
 
 -- Fly to the egg and start opening it
 function flyToEgg(egg)
@@ -102,8 +102,5 @@ spawn(function()
             -- Fly to the selected egg and open it
             flyToEgg(eggToOpen)
         end
-        
-        -- Delay of 5 seconds before checking again to give the server time to stabilize
-        wait(5)
     end
 end)
