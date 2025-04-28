@@ -1,0 +1,121 @@
+-- Egg Hunter PRO Script | Full Code No Loadstring
+
+local eggsToFind = {
+    "Void Egg",
+    "Nightmare Egg",
+    "Rainbow Egg",
+    "Aura Egg",
+    "Silly Egg"
+}
+
+local huntingEggs = false
+local autoFarm = false
+
+function findEgg()
+    for _, eggName in ipairs(eggsToFind) do
+        for _, v in ipairs(game.Workspace:GetDescendants()) do
+            if v:IsA("Part") and v.Name == eggName then
+                return v
+            end
+        end
+    end
+    return nil
+end
+
+function teleportToEgg(egg)
+    if egg and egg:IsA("Part") then
+        local hrp = game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            hrp.CFrame = egg.CFrame + Vector3.new(0, 5, 0)
+        end
+    end
+end
+
+function autoOpenEgg(egg)
+    local prompt = egg:FindFirstChildWhichIsA("ProximityPrompt")
+    if prompt then
+        fireproximityprompt(prompt)
+    end
+end
+
+function hopServer()
+    local HttpService = game:GetService("HttpService")
+    local TeleportService = game:GetService("TeleportService")
+    local PlaceId = game.PlaceId
+
+    local servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..PlaceId.."/servers/Public?sortOrder=Asc&limit=100"))
+    for i,v in ipairs(servers.data) do
+        if v.playing < v.maxPlayers then
+            TeleportService:TeleportToPlaceInstance(PlaceId, v.id, game.Players.LocalPlayer)
+            break
+        end
+    end
+end
+
+function startEggHunt()
+    huntingEggs = true
+    while huntingEggs do
+        local egg = findEgg()
+        if egg then
+            print("[+] Egg found:", egg.Name)
+            teleportToEgg(egg)
+            wait(1)
+            autoOpenEgg(egg)
+            wait(3)
+        else
+            print("[-] No egg found. Hopping server...")
+            hopServer()
+            wait(5)
+        end
+    end
+end
+
+function startAutoFarm()
+    autoFarm = true
+    while autoFarm do
+        for _, coin in ipairs(game.Workspace:GetDescendants()) do
+            if coin:IsA("Part") and (coin.Name == "Coin" or coin.Name == "Diamond") then
+                local hrp = game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    hrp.CFrame = coin.CFrame
+                    wait(0.2)
+                end
+            end
+        end
+        wait(1)
+    end
+end
+
+-- GUI Basic
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+local Frame = Instance.new("Frame", ScreenGui)
+Frame.Size = UDim2.new(0, 200, 0, 150)
+Frame.Position = UDim2.new(0, 10, 0, 10)
+Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+
+local eggButton = Instance.new("TextButton", Frame)
+eggButton.Size = UDim2.new(1, 0, 0.5, 0)
+eggButton.Text = "Start Egg Hunt"
+eggButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+
+local farmButton = Instance.new("TextButton", Frame)
+farmButton.Position = UDim2.new(0, 0, 0.5, 0)
+farmButton.Size = UDim2.new(1, 0, 0.5, 0)
+farmButton.Text = "Start Auto Farm"
+farmButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+
+eggButton.MouseButton1Click:Connect(function()
+    if not huntingEggs then
+        startEggHunt()
+    else
+        huntingEggs = false
+    end
+end)
+
+farmButton.MouseButton1Click:Connect(function()
+    if not autoFarm then
+        startAutoFarm()
+    else
+        autoFarm = false
+    end
+end)
