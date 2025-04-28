@@ -1,43 +1,25 @@
--- Egg Finder and Hatcher (Delta compatible with automatic egg search and opening)
+-- Fly to Last World and Open Rainbow Egg
 
 local Players = game:GetService("Players")
-local TeleportService = game:GetService("TeleportService")
 local LocalPlayer = Players.LocalPlayer
-local HttpService = game:GetService("HttpService")
-local PlaceId = game.PlaceId
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Configuration Variables
-local egg_amount = "max" -- Number of eggs to hatch at once (set to "max" for max eggs)
-local egg_priority = "void-egg" -- Priority egg (e.g., "aura-egg", "event-1", etc.)
+local egg_name = "rainbow-egg"  -- Target egg to find
 local open_eggs = true -- Set to true to hatch eggs, false to just find them
-local target_eggs = {"aura-egg", "event-1", "event-2", "rainbow-egg", "nightmare-egg", "void-egg", "event-3"} -- List of target eggs
 
--- Initialize selected egg
-local selectedEgg = "void-egg"  -- Default to "aura-egg" if no selection made yet 
-
--- Server hop function (with 10-second delay)
-local checked = {}
-function hop()
-    print("Waiting 10 seconds before hopping to a new server...")
-    wait(10)  -- Delay before hopping to a new server
-    
-    local cursor = ""
-    while true do
-        local url = ("https://games.roblox.com/v1/games/%s/servers/Public?limit=100&cursor=%s&sortOrder=Asc"):format(PlaceId, cursor)
-        local data = HttpService:JSONDecode(game:HttpGet(url))
-        for _, s in ipairs(data.data) do
-            if not checked[s.id] and s.playing < s.maxPlayers and s.id ~= game.JobId then
-                checked[s.id] = true
-                TeleportService:TeleportToPlaceInstance(PlaceId, s.id, LocalPlayer)
-                print("Hopped to a new server: " .. s.id)  -- Confirm server hop
-                return
-            end
+-- Function to find the last world or island (for the Rainbow Egg)
+function findLastWorld()
+    local lastWorld = nil
+    -- Loop through all parts in the workspace to find the last island or world (example)
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") and string.find(obj.Name, "Island") then
+            -- In a real case, you would check for the "last" world based on some conditions
+            lastWorld = obj
         end
-        if not data.nextPageCursor then break end
-        cursor = data.nextPageCursor
     end
+    return lastWorld
 end
 
 -- Function to fly to the egg and start opening it
@@ -77,53 +59,27 @@ function openEgg(egg)
     end
 end
 
--- Function to search for eggs with the specified luck and type across the game
-function searchForEggs()
-    local foundEggs = {}
-    
-    -- Loop through all objects in workspace and all worlds/islands
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("Model") then
-            -- Check for egg name matching target eggs and luck values
-            for _, target in ipairs(target_eggs) do
-                if string.find(obj.Name, target) then
-                    table.insert(foundEggs, obj)
-                    break  -- Stop looking once we find a matching egg
-                end
-            end
-        end
-    end
-    
-    return foundEggs
-end
-
--- Main loop (find egg, teleport, server hop, hatch eggs)
+-- Main loop (find last world, fly to it, open rainbow egg)
 spawn(function()
     while true do
-        -- Search for eggs across the game world (including islands)
-        local foundEggs = searchForEggs()
+        -- Find the last world (island)
+        local lastWorld = findLastWorld()
         
-        -- If no eggs are found, hop to another server
-        if #foundEggs == 0 then
-            print("No desired eggs found in the current server. Hopping to another server...")
-            hop() -- Perform server hop
-        else
-            -- Fly to the egg (prioritize eggs in the target_eggs list)
-            local eggToOpen = foundEggs[1] -- Default to the first egg found
-            if egg_priority then
-                -- If egg_priority is set, prioritize that egg
-                for _, egg in ipairs(foundEggs) do
-                    if egg.Name == egg_priority then
-                        eggToOpen = egg
-                        break
-                    end
-                end
+        if lastWorld then
+            -- Search for the Rainbow Egg on that world
+            local rainbowEgg = lastWorld:FindFirstChild(egg_name)
+            
+            if rainbowEgg then
+                -- Fly to the Rainbow Egg and open it
+                flyToEgg(rainbowEgg)
+            else
+                print("Rainbow egg not found in the last world!")
             end
-            -- Fly to the selected egg and open it
-            flyToEgg(eggToOpen)
+        else
+            print("No last world found!")
         end
         
-        -- Delay of 5 seconds before checking again to give the server time to stabilize
+        -- Delay of 5 seconds before checking again
         wait(5)
     end
 end)
