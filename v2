@@ -7,11 +7,9 @@ local PlaceId = game.PlaceId
 
 -- Configuration Variables
 local target_eggs = {"Void Egg", "Nightmare Egg", "Rainbow Egg", "Aura Egg", "Silly Egg"}  -- List of eggs to search for
-local open_eggs = true -- Set to true to open eggs when found
 local max_distance = 16000 -- Maximum distance to search for eggs (increased to 16000 meters)
 
 local eggHunt = false
-local serverHop = false
 
 -- Function to find eggs across the game (even if they're far)
 function findEggs()
@@ -49,34 +47,8 @@ end
 
 -- Function to open the egg (if open_eggs is true)
 function openEgg(egg)
-    if open_eggs then
-        print("Opening egg:", egg.Name)
-        -- Replace this with actual logic to "open" the egg in Delta, e.g., triggering the "E" key or Delta's method to open
-    else
-        print("Egg found but not opening:", egg.Name)
-    end
-end
-
--- Server hop function (to change servers)
-local checked = {}
-function hop()
-    print("Waiting 60 seconds before hopping to a new server...")
-    wait(60)  -- 60 seconds delay before hopping to a new server
-    
-    local cursor = ""
-    while true do
-        local url = ("https://games.roblox.com/v1/games/%s/servers/Public?limit=100&cursor=%s&sortOrder=Asc"):format(PlaceId, cursor)
-        local data = HttpService:JSONDecode(game:HttpGet(url))
-        for _, s in ipairs(data.data) do
-            if s.playing < s.maxPlayers and s.id ~= game.JobId then
-                TeleportService:TeleportToPlaceInstance(PlaceId, s.id, LocalPlayer)
-                print("Hopped to a new server: " .. s.id)
-                return
-            end
-        end
-        if not data.nextPageCursor then break end
-        cursor = data.nextPageCursor
-    end
+    print("Opening egg:", egg.Name)
+    -- Replace this with actual logic to "open" the egg in Delta, e.g., triggering the "E" key or Delta's method to open
 end
 
 -- Egg Hunt (search for the eggs in the entire game)
@@ -87,8 +59,7 @@ function startEggHunt()
         local foundEggs = findEggs()
         
         if #foundEggs == 0 then
-            print("No eggs found. Hopping to another server...")
-            hop() -- Perform server hop if no eggs found
+            print("No eggs found.")
         else
             -- Prioritize the first egg in the target_eggs list
             local eggToTeleport = foundEggs[1] -- Default to the first egg found
@@ -101,15 +72,37 @@ function startEggHunt()
     end
 end
 
--- Start Egg Hunt automatically when the script runs
-startEggHunt()
+-- GUI Creation
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = game.Players.LocalPlayer.PlayerGui
 
--- Server Hop function (to change servers)
-function startServerHop()
-    serverHop = true
-    while serverHop do
-        print("Starting server hop...")
-        hop()  -- Perform the server hop
-        wait(5)  -- Delay before next hop
-    end
-end
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 200, 0, 150)
+frame.Position = UDim2.new(0, 10, 0, 10)
+frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+frame.BackgroundTransparency = 0.5
+frame.Parent = screenGui
+
+local startEggHuntButton = Instance.new("TextButton")
+startEggHuntButton.Size = UDim2.new(0, 180, 0, 50)
+startEggHuntButton.Position = UDim2.new(0, 10, 0, 10)
+startEggHuntButton.Text = "Start Egg Hunt"
+startEggHuntButton.Parent = frame
+
+-- Button click event to start the egg hunt
+startEggHuntButton.MouseButton1Click:Connect(function()
+    print("Starting Egg Hunt...")
+    startEggHunt() -- Start the egg hunt when the button is clicked
+end)
+
+local stopButton = Instance.new("TextButton")
+stopButton.Size = UDim2.new(0, 180, 0, 50)
+stopButton.Position = UDim2.new(0, 10, 0, 70)
+stopButton.Text = "Stop Egg Hunt"
+stopButton.Parent = frame
+
+-- Button click event to stop the egg hunt
+stopButton.MouseButton1Click:Connect(function()
+    print("Stopping Egg Hunt...")
+    eggHunt = false  -- Set eggHunt to false to stop the hunt
+end)
