@@ -1,5 +1,4 @@
--- Egg Finder and Hatcher (Delta compatible with egg priority, egg_amount, and open_eggs options)
-
+-- Egg Finder and Hatcher (Delta compatible with automatic egg search and opening)
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local LocalPlayer = Players.LocalPlayer
@@ -12,36 +11,34 @@ local egg_priority = "aura-egg" -- Priority egg (e.g., "aura-egg", "event-1", et
 local open_eggs = true -- Set to true to hatch eggs, false to just find them
 local target_eggs = {"aura-egg", "event-1", "event-2", "rainbow-egg", "nightmare-egg", "void-egg", "event-3"}
 
--- Initialize egg selection
+-- Initialize selected egg
 local selectedEgg = "aura-egg"  -- Default to "aura-egg" if no selection made yet
 
--- GUI Setup
-local gui = Instance.new("ScreenGui", game.CoreGui)
-gui.Name = "EggFinderUI"
+-- Fly to the egg and start opening it
+function flyToEgg(egg)
+    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if root then
+        -- Fly to the egg
+        local eggPosition = egg.CFrame.Position
+        local direction = (eggPosition - root.Position).unit
+        while (root.Position - eggPosition).Magnitude > 5 do
+            root.CFrame = root.CFrame + direction * 10
+            wait(0.1)  -- Minimal delay to simulate flying
+        end
+        -- Once at the egg, open it
+        openEgg(egg)
+    end
+end
 
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 200, 0, 100)
-frame.Position = UDim2.new(0, 10, 0, 100)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-
-local label = Instance.new("TextLabel", frame)
-label.Size = UDim2.new(1, 0, 0, 30)
-label.Text = "Select Egg:"
-label.TextColor3 = Color3.new(1, 1, 1)
-label.BackgroundTransparency = 1
-
-for i, eggName in ipairs(target_eggs) do
-    local btn = Instance.new("TextButton", frame)
-    btn.Size = UDim2.new(1, 0, 0, 20)
-    btn.Position = UDim2.new(0, 0, 0, 30 + (i - 1) * 20)
-    btn.Text = eggName
-    btn.TextColor3 = Color3.new(1, 1, 1)
-    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-
-    btn.MouseButton1Click:Connect(function()
-        selectedEgg = eggName
-        label.Text = "Selected: " .. eggName
-    end)
+-- Function to hatch the egg (if open_eggs is true)
+function openEgg(egg)
+    if open_eggs then
+        print("Opening egg:", egg.Name)
+        -- Implement egg opening logic (e.g., fire a RemoteEvent or interact with the egg)
+        -- Example: fire a remote event to start hatching the egg
+    else
+        print("Egg found but not opening:", egg.Name)
+    end
 end
 
 -- Server hop function
@@ -63,23 +60,11 @@ function hop()
     end
 end
 
--- Function to hatch the egg (if open_eggs is true)
-function openEgg(egg)
-    if open_eggs then
-        print("Opening egg:", egg.Name)
-        -- Implement egg opening logic (e.g., fire a RemoteEvent or interact with the egg)
-    else
-        print("Egg found but not opening:", egg.Name)
-    end
-end
-
 -- Main loop (find egg, teleport, server hop, hatch eggs)
 spawn(function()
     while true do
-        -- Prioritize the selected egg
-        local eggToOpen = nil
+        -- Search for eggs on the islands (target_eggs list)
         local foundEggs = {}
-
         for _, eggName in ipairs(target_eggs) do
             local egg = workspace:FindFirstChild(eggName)
             if egg then
@@ -87,29 +72,24 @@ spawn(function()
             end
         end
 
-        -- Sort found eggs by priority
-        table.sort(foundEggs, function(a, b)
-            if a.Name == egg_priority then return true end
-            if b.Name == egg_priority then return false end
-            return false -- No priority sorting for other eggs
-        end)
-
-        -- Select eggs to open based on egg_amount
-        local eggCount = 0
-        for _, egg in ipairs(foundEggs) do
-            if eggCount < (egg_amount == "max" and #foundEggs or egg_amount) then
-                openEgg(egg)
-                eggCount = eggCount + 1
-            else
-                break
-            end
-        end
-
-        -- If no eggs were found, hop servers
+        -- If no eggs are found, hop to another server
         if #foundEggs == 0 then
             hop()
+        else
+            -- Fly to the egg (prioritize eggs in the target_eggs list)
+            local eggToOpen = foundEggs[1] -- Default to the first egg found
+            if egg_priority then
+                -- If egg_priority is set, prioritize that egg
+                for _, egg in ipairs(foundEggs) do
+                    if egg.Name == egg_priority then
+                        eggToOpen = egg
+                        break
+                    end
+                end
+            end
+            -- Fly to the selected egg and open it
+            flyToEgg(eggToOpen)
         end
-
-        task.wait(0.5) -- Minimal delay for checking eggs
+        wait(0.5) -- Minimal delay for egg search
     end
 end)
