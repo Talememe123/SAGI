@@ -8,7 +8,11 @@ local PlaceId = game.PlaceId
 -- Configuration Variables
 local target_eggs = {"Void Egg", "Nightmare Egg", "Rainbow Egg", "Aura Egg", "Silly Egg"}  -- List of eggs to search for
 local open_eggs = true -- Set to true to open eggs when found
-local max_distance = 500 -- Maximum distance to search for eggs
+local max_distance = 16000 -- Maximum distance to search for eggs (increased to 16000 meters)
+local autoFarm = false
+local eggHunt = false
+local serverHop = false
+local farmType = "None"  -- "Coin" / "Diamond"
 
 -- Function to find eggs across the game (even if they're far)
 function findEggs()
@@ -17,7 +21,14 @@ function findEggs()
         if obj:IsA("Model") then
             for _, eggName in ipairs(target_eggs) do
                 if string.find(obj.Name, eggName) then
-                    table.insert(foundEggs, obj)
+                    local eggPosition = obj:FindFirstChild("Main") and obj.Main.CFrame.Position or obj.CFrame.Position
+                    local playerPosition = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                    if playerPosition then
+                        local distance = (eggPosition - playerPosition.Position).Magnitude
+                        if distance <= max_distance then
+                            table.insert(foundEggs, obj)
+                        end
+                    end
                 end
             end
         end
@@ -47,7 +58,7 @@ function openEgg(egg)
     end
 end
 
--- Your provided server-hop function
+-- Server hop function (to change servers)
 local checked = {}
 function hop()
     print("Waiting 60 seconds before hopping to a new server...")
@@ -69,10 +80,11 @@ function hop()
     end
 end
 
--- Main loop (find eggs, teleport, server hop, hatch eggs)
-spawn(function()
-    while true do
-        -- Search for eggs across the entire game
+-- Egg Hunt (search for the eggs in the entire game)
+function startEggHunt()
+    eggHunt = true
+    while eggHunt do
+        -- Search for eggs across the entire game world
         local foundEggs = findEggs()
         
         if #foundEggs == 0 then
@@ -81,13 +93,99 @@ spawn(function()
         else
             -- Prioritize the first egg in the target_eggs list
             local eggToTeleport = foundEggs[1] -- Default to the first egg found
-            
-            -- Teleport to the egg and open it
-            teleportToEgg(eggToTeleport)
+            teleportToEgg(eggToTeleport) -- Teleport to the egg
             openEgg(eggToTeleport)  -- Open the egg if open_eggs is true
         end
         
-        -- Delay of 5 seconds before checking again
+        -- Delay before checking again
         wait(5)
     end
+end
+
+-- Auto Farm (Collect Coins/Diamonds)
+function startAutoFarm()
+    autoFarm = true
+    while autoFarm do
+        for _, obj in ipairs(Workspace:GetDescendants()) do
+            if obj:IsA("Model") and (string.find(obj.Name, "Coin") or string.find(obj.Name, "Diamond")) then
+                local mainPart = obj:FindFirstChild("Main") or obj:FindFirstChildWhichIsA("Part")
+                if mainPart then
+                    local hrp = game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        hrp.CFrame = mainPart.CFrame + Vector3.new(0, 3, 0)
+                        wait(0.1)
+                    end
+                end
+            end
+        end
+        wait(0.5)
+    end
+end
+
+-- Stop Auto Farm
+function stopAutoFarm()
+    autoFarm = false
+end
+
+-- Server Hop function (change servers)
+function startServerHop()
+    serverHop = true
+    while serverHop do
+        print("Starting server hop...")
+        hop()  -- Perform the server hop
+        wait(5)  -- Delay before next hop
+    end
+end
+
+-- GUI for controlling the actions
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = game.Players.LocalPlayer.PlayerGui
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 200, 0, 300)
+frame.Position = UDim2.new(0, 10, 0, 10)
+frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+frame.BackgroundTransparency = 0.5
+frame.Parent = screenGui
+
+-- Start Egg Hunt Button
+local startEggHuntButton = Instance.new("TextButton")
+startEggHuntButton.Size = UDim2.new(0, 180, 0, 50)
+startEggHuntButton.Position = UDim2.new(0, 10, 0, 10)
+startEggHuntButton.Text = "Start Egg Hunt"
+startEggHuntButton.Parent = frame
+startEggHuntButton.MouseButton1Click:Connect(function()
+    startEggHunt()
+end)
+
+-- Start Auto Farm Button
+local startAutoFarmButton = Instance.new("TextButton")
+startAutoFarmButton.Size = UDim2.new(0, 180, 0, 50)
+startAutoFarmButton.Position = UDim2.new(0, 10, 0, 70)
+startAutoFarmButton.Text = "Start Auto Farm"
+startAutoFarmButton.Parent = frame
+startAutoFarmButton.MouseButton1Click:Connect(function()
+    startAutoFarm()
+end)
+
+-- Stop Button
+local stopButton = Instance.new("TextButton")
+stopButton.Size = UDim2.new(0, 180, 0, 50)
+stopButton.Position = UDim2.new(0, 10, 0, 130)
+stopButton.Text = "Stop All"
+stopButton.Parent = frame
+stopButton.MouseButton1Click:Connect(function()
+    stopAutoFarm()
+    eggHunt = false
+    serverHop = false
+end)
+
+-- Start Server Hop Button
+local startServerHopButton = Instance.new("TextButton")
+startServerHopButton.Size = UDim2.new(0, 180, 0, 50)
+startServerHopButton.Position = UDim2.new(0, 10, 0, 190)
+startServerHopButton.Text = "Start Server Hop"
+startServerHopButton.Parent = frame
+startServerHopButton.MouseButton1Click:Connect(function()
+    startServerHop()
 end)
