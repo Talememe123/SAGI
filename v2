@@ -1,4 +1,4 @@
--- Egg Finder and Hatcher (Delta compatible with automatic egg search and opening)
+-- Egg Finder and Hatcher for Delta (automatic egg search, flying, and opening eggs)
 
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
@@ -8,14 +8,14 @@ local PlaceId = game.PlaceId
 
 -- Configuration Variables
 local egg_amount = "max" -- Number of eggs to hatch at once (set to "max" for max eggs)
-local egg_priority = "aura-egg" -- Priority egg (e.g., "aura-egg", "event-1", etc.)
+local egg_priority = "void-egg" -- Priority egg (e.g., "aura-egg", "event-1", etc.)
 local open_eggs = true -- Set to true to hatch eggs, false to just find them
 local target_eggs = {"aura-egg", "event-1", "event-2", "rainbow-egg", "nightmare-egg", "void-egg", "event-3"}
 
 -- Initialize selected egg
 local selectedEgg = "void-egg"  -- Default to "aura-egg" if no selection made yet
 
--- Fly to the egg and start opening it
+-- Function to fly to the egg and start opening it
 function flyToEgg(egg)
     local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if root and egg then
@@ -29,14 +29,14 @@ function flyToEgg(egg)
         -- Once at the egg, open it
         openEgg(egg)
     else
-        print("No egg or root part found, cannot fly.")
+        warn("No egg or root part found, cannot fly.")  -- Using warn() for better visibility
     end
 end
 
 -- Function to hatch the egg (if open_eggs is true)
 function openEgg(egg)
     if open_eggs then
-        print("Opening egg:", egg.Name)
+        print("Opening egg: " .. egg.Name)  -- Use print to log egg opening
         
         -- Trigger egg opening action (replace with actual event)
         local eggOpenEvent = game.ReplicatedStorage:FindFirstChild("EggOpenEvent")
@@ -45,10 +45,10 @@ function openEgg(egg)
             -- Fire the event to open the egg (you might need to send additional parameters)
             eggOpenEvent:FireServer(egg)
         else
-            print("EggOpenEvent not found!")
+            warn("EggOpenEvent not found!")  -- Using warn() for better visibility
         end
     else
-        print("Egg found but not opening:", egg.Name)
+        print("Egg found but not opening: " .. egg.Name)  -- Informing that egg is found but not opened
     end
 end
 
@@ -63,6 +63,7 @@ function hop()
             if not checked[s.id] and s.playing < s.maxPlayers and s.id ~= game.JobId then
                 checked[s.id] = true
                 TeleportService:TeleportToPlaceInstance(PlaceId, s.id, LocalPlayer)
+                print("Hopped to a new server: " .. s.id)  -- Confirm server hop
                 return
             end
         end
@@ -77,15 +78,18 @@ spawn(function()
         -- Search for eggs on the islands (target_eggs list)
         local foundEggs = {}
         for _, eggName in ipairs(target_eggs) do
-            local egg = workspace:FindFirstChild(eggName)
-            if egg then
-                table.insert(foundEggs, egg)
+            -- Searching for eggs with the name in the target_eggs list
+            for _, egg in ipairs(workspace:GetChildren()) do
+                if egg:IsA("Part") and egg.Name == eggName then
+                    print("Egg found: " .. egg.Name)  -- Log egg found
+                    table.insert(foundEggs, egg)
+                end
             end
         end
 
         -- If no eggs are found, hop to another server
         if #foundEggs == 0 then
-            print("No desired eggs found in the current server. Hopping to another server...")
+            print("No desired eggs found in the current server. Hopping to another server...")  -- Log server hop
             hop() -- Perform server hop
         else
             -- Fly to the egg (prioritize eggs in the target_eggs list)
@@ -102,5 +106,6 @@ spawn(function()
             -- Fly to the selected egg and open it
             flyToEgg(eggToOpen)
         end
+        wait(5)  -- Adding a small delay before re-checking (you can adjust this as needed)
     end
 end)
