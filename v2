@@ -84,7 +84,7 @@ spawn(function()
         -- If no eggs are found, hop to another server
         if #foundEggs == 0 then
             print("No desired eggs found in the current server. Hopping to another server...")
-            hop()
+            hop() -- Perform server hop
         else
             -- Fly to the egg (prioritize eggs in the target_eggs list)
             local eggToOpen = foundEggs[1] -- Default to the first egg found
@@ -95,11 +95,11 @@ spawn(function()
                         eggToOpen = egg
                         break
                     end
-                end
             end
             -- Fly to the selected egg and open it
             flyToEgg(eggToOpen)
         end
-        wait(2) -- Wait for 2 seconds before checking again
+        
+        wait(5) -- Delay of 5 seconds between searches to allow eggs to appear or the server to stabilize
     end
 end)
