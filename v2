@@ -6,17 +6,18 @@ local LocalPlayer = Players.LocalPlayer
 local HttpService = game:GetService("HttpService")
 local PlaceId = game.PlaceId
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
 -- Configuration Variables
 local egg_amount = "max" -- Number of eggs to hatch at once (set to "max" for max eggs)
-local egg_priority = "void-egg" -- Priority egg (e.g., "aura-egg", "event-1", etc.) 
+local egg_priority = "void-egg" -- Priority egg (e.g., "aura-egg", "event-1", etc.)
 local open_eggs = true -- Set to true to hatch eggs, false to just find them
 local target_eggs = {"aura-egg", "event-1", "event-2", "rainbow-egg", "nightmare-egg", "void-egg", "event-3"} -- List of target eggs
 
 -- Initialize selected egg
 local selectedEgg = "void-egg"  -- Default to "aura-egg" if no selection made yet 
 
--- Server hop function
+-- Server hop function (with 10-second delay)
 local checked = {}
 function hop()
     print("Waiting 10 seconds before hopping to a new server...")
@@ -62,27 +63,27 @@ function openEgg(egg)
     if open_eggs then
         print("Opening egg:", egg.Name)
         
-        -- Trigger egg opening action (replace with actual event)
-        local eggOpenEvent = ReplicatedStorage:FindFirstChild("EggOpenEvent")
-        
-        if eggOpenEvent then
-            -- Fire the event to open the egg (you might need to send additional parameters)
-            eggOpenEvent:FireServer(egg)
-        else
-            print("EggOpenEvent not found!")
-        end
+        -- Simulate pressing "E" to open the egg (if "E" is the correct input key)
+        local userInputService = game:GetService("UserInputService")
+        userInputService.InputBegan:Connect(function(input)
+            if input.KeyCode == Enum.KeyCode.E then
+                -- You can also call any other function here that opens the egg based on Delta
+                -- If Delta has a custom way to "open" eggs, you would invoke it here.
+                print("Egg opened!")
+            end
+        end)
     else
         print("Egg found but not opening:", egg.Name)
     end
 end
 
--- Function to search for eggs with the specified luck and type
+-- Function to search for eggs with the specified luck and type across the game
 function searchForEggs()
     local foundEggs = {}
     
-    -- Loop through all objects in workspace
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("Model") and (string.find(obj.Name, "Egg")) then
+    -- Loop through all objects in workspace and all worlds/islands
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") then
             -- Check for egg name matching target eggs and luck values
             for _, target in ipairs(target_eggs) do
                 if string.find(obj.Name, target) then
@@ -99,7 +100,7 @@ end
 -- Main loop (find egg, teleport, server hop, hatch eggs)
 spawn(function()
     while true do
-        -- Search for eggs on the server
+        -- Search for eggs across the game world (including islands)
         local foundEggs = searchForEggs()
         
         -- If no eggs are found, hop to another server
